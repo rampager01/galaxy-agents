@@ -195,10 +195,16 @@ async def check_stuck_pods(config) -> list[Alert]:
         config,
         'kube_pod_status_phase{phase=~"Pending|Failed|Unknown"} == 1',
     )
+    # Deduplicate by pod (a pod may match multiple phases)
+    seen_pods: set[str] = set()
     for r in data.get("result", []):
         pod = r["metric"].get("pod", "unknown")
         ns = r["metric"].get("namespace", "unknown")
         phase = r["metric"].get("phase", "unknown")
+        key = f"{ns}/{pod}"
+        if key in seen_pods:
+            continue
+        seen_pods.add(key)
         alerts.append(Alert(
             check_name="Stuck Pod",
             severity="warning",
@@ -275,7 +281,7 @@ async def check_oom_kills(config) -> list[Alert]:
     """Check for OOMKilled events in logs."""
     entries = await query_logs(
         config,
-        '{k8s_namespace_name=~".+"} |~ "OOMKilled|Out of memory"',
+        '{k8s_namespace_name=~".+", k8s_pod_name!~"galaxy-sentinel.*"} |~ "OOMKilled|Out of memory"',
         limit=5,
         since="5m",
     )
@@ -297,7 +303,7 @@ async def check_flux_errors(config) -> list[Alert]:
     """Check for Flux reconciliation errors."""
     entries = await query_logs(
         config,
-        '{k8s_namespace_name="flux-system"} |~ "error|reconciliation failed"',
+        '{k8s_namespace_name="flux-system"} |~ "reconciliation failed|error.*reconcil|level=error"',
         limit=5,
         since="5m",
     )
