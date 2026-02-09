@@ -1,6 +1,18 @@
 """DNS resolution checks via Technitium."""
 
+import socket
+
 import dns.resolver
+
+
+def _resolve_server(server: str) -> str:
+    """Resolve a server hostname to an IP if needed (dnspython requires IPs)."""
+    try:
+        socket.inet_aton(server)
+        return server  # Already an IP
+    except OSError:
+        info = socket.getaddrinfo(server, 53, socket.AF_INET)
+        return info[0][4][0]
 
 
 async def check_dns(
@@ -10,14 +22,15 @@ async def check_dns(
 
     Args:
         query: Domain name to resolve.
-        server: DNS server IP address.
+        server: DNS server IP or hostname.
         expected: If set, verify the result matches this IP.
 
     Returns:
         Dict with keys: query, server, resolved, addresses, matches_expected, error
     """
+    server_ip = _resolve_server(server)
     resolver = dns.resolver.Resolver()
-    resolver.nameservers = [server]
+    resolver.nameservers = [server_ip]
     resolver.lifetime = timeout
 
     try:

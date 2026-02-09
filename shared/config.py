@@ -20,7 +20,7 @@ class Config:
         )
     )
     dns_server: str = field(
-        default_factory=lambda: os.getenv("DNS_SERVER", "10.112.9.200")
+        default_factory=lambda: os.getenv("DNS_SERVER", "technitium-dns.dns.svc.cluster.home")
     )
 
     # Slack
@@ -50,9 +50,12 @@ class Config:
         default_factory=lambda: int(os.getenv("DIGEST_HOUR", "8"))
     )
 
-    # Traefik ingress IP (for probing external endpoints from inside the cluster)
-    traefik_ip: str = field(
-        default_factory=lambda: os.getenv("TRAEFIK_IP", "10.112.9.201")
+    # Traefik ingress URL (for probing external endpoints from inside the cluster)
+    traefik_url: str = field(
+        default_factory=lambda: os.getenv(
+            "TRAEFIK_URL",
+            "https://traefik.external-traefik.svc.cluster.home",
+        )
     )
 
     # Endpoints to probe (via Traefik with Host header, since CoreDNS can't resolve local domains)

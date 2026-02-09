@@ -40,19 +40,18 @@ async def check_endpoint(
 
 
 async def check_endpoint_via_traefik(
-    host: str, traefik_ip: str, timeout: float = 10.0, expected_status: int = 200
+    host: str, traefik_url: str, timeout: float = 10.0, expected_status: int = 200
 ) -> dict:
-    """Probe an external endpoint via Traefik's LB IP with Host header.
+    """Probe an external endpoint via Traefik's cluster service with Host header.
 
     Used when CoreDNS can't resolve the domain (e.g., local domains managed by Technitium).
     """
-    url = f"https://{traefik_ip}"
     try:
         async with httpx.AsyncClient(
             timeout=timeout, follow_redirects=True, verify=False,
             headers={"Host": host},
         ) as client:
-            resp = await client.get(url)
+            resp = await client.get(traefik_url)
             return {
                 "url": f"https://{host}",
                 "healthy": resp.status_code == expected_status,

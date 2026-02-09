@@ -216,7 +216,7 @@ async def check_endpoints(config) -> list[Alert]:
     for ep in config.probe_endpoints:
         result = await check_endpoint_via_traefik(
             host=ep["host"],
-            traefik_ip=config.traefik_ip,
+            traefik_url=config.traefik_url,
         )
         if not result["healthy"]:
             error_detail = result["error"] or f"HTTP {result['status_code']}"

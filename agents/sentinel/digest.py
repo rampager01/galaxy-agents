@@ -138,7 +138,7 @@ async def _collect_24h_summary(config) -> str:
         ep_parts = []
         for ep in config.probe_endpoints:
             result = await check_endpoint_via_traefik(
-                host=ep["host"], traefik_ip=config.traefik_ip,
+                host=ep["host"], traefik_url=config.traefik_url,
             )
             if result["healthy"]:
                 ep_parts.append(f"{ep['name']}=ok({result['response_time_ms']}ms)")
