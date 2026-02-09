@@ -4,7 +4,7 @@ import logging
 from dataclasses import dataclass
 
 from shared.tools.dns import check_dns
-from shared.tools.endpoints import check_endpoint
+from shared.tools.endpoints import check_endpoint, check_endpoint_via_traefik
 from shared.tools.logs import query_logs
 from shared.tools.metrics import format_instant_results, query_metrics
 
@@ -211,16 +211,19 @@ async def check_stuck_pods(config) -> list[Alert]:
 
 
 async def check_endpoints(config) -> list[Alert]:
-    """Probe external HTTP(S) endpoints."""
+    """Probe external HTTP(S) endpoints via Traefik."""
     alerts = []
     for ep in config.probe_endpoints:
-        result = await check_endpoint(ep["url"])
+        result = await check_endpoint_via_traefik(
+            host=ep["host"],
+            traefik_ip=config.traefik_ip,
+        )
         if not result["healthy"]:
             error_detail = result["error"] or f"HTTP {result['status_code']}"
             alerts.append(Alert(
                 check_name=f"{ep['name']} Unreachable",
                 severity=ep["severity"],
-                message=f"{ep['url']}: {error_detail}",
+                message=f"{result['url']}: {error_detail}",
             ))
     return alerts
 

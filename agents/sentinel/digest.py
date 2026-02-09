@@ -4,7 +4,7 @@ import logging
 from datetime import datetime, timedelta
 
 from shared.llm.provider import LLMProvider
-from shared.tools.endpoints import check_endpoint
+from shared.tools.endpoints import check_endpoint_via_traefik
 from shared.tools.logs import query_logs
 from shared.tools.metrics import query_metrics
 from shared.tools.slack import send_slack_alert
@@ -137,7 +137,9 @@ async def _collect_24h_summary(config) -> str:
     try:
         ep_parts = []
         for ep in config.probe_endpoints:
-            result = await check_endpoint(ep["url"])
+            result = await check_endpoint_via_traefik(
+                host=ep["host"], traefik_ip=config.traefik_ip,
+            )
             if result["healthy"]:
                 ep_parts.append(f"{ep['name']}=ok({result['response_time_ms']}ms)")
             else:

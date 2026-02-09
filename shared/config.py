@@ -10,7 +10,7 @@ class Config:
     victoria_metrics_url: str = field(
         default_factory=lambda: os.getenv(
             "VICTORIA_METRICS_URL",
-            "http://victoria-metrics-server.monitoring.svc.cluster.home:8428",
+            "http://victoria-metrics-single-server.monitoring.svc.cluster.home:8428",
         )
     )
     loki_url: str = field(
@@ -50,10 +50,15 @@ class Config:
         default_factory=lambda: int(os.getenv("DIGEST_HOUR", "8"))
     )
 
-    # Endpoints to probe
+    # Traefik ingress IP (for probing external endpoints from inside the cluster)
+    traefik_ip: str = field(
+        default_factory=lambda: os.getenv("TRAEFIK_IP", "10.112.9.201")
+    )
+
+    # Endpoints to probe (via Traefik with Host header, since CoreDNS can't resolve local domains)
     probe_endpoints: list[dict[str, str]] = field(default_factory=lambda: [
-        {"name": "n8n", "url": "https://workflows.stargate-labs.net", "severity": "critical"},
-        {"name": "grafana", "url": "https://grafana.stargate-labs.net", "severity": "warning"},
+        {"name": "n8n", "host": "workflows.stargate-labs.net", "severity": "critical"},
+        {"name": "grafana", "host": "grafana.stargate-labs.net", "severity": "warning"},
     ])
 
     # DNS checks
@@ -75,7 +80,7 @@ class Config:
     internal_health_checks: list[dict[str, str]] = field(default_factory=lambda: [
         {
             "name": "victoria-metrics",
-            "url": "http://victoria-metrics-server.monitoring.svc.cluster.home:8428/health",
+            "url": "http://victoria-metrics-single-server.monitoring.svc.cluster.home:8428/health",
             "severity": "warning",
         },
         {
