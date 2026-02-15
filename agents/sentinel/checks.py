@@ -281,9 +281,11 @@ async def check_dns_resolution(config) -> list[Alert]:
 
 async def check_oom_kills(config) -> list[Alert]:
     """Check for OOMKilled events in logs."""
+    # Exclude Loki pods — Loki logs incoming queries in its access logs,
+    # creating a feedback loop (our OOM query string appears in Loki's logs).
     entries = await query_logs(
         config,
-        '{k8s_namespace_name=~".+", k8s_pod_name!~"galaxy-sentinel.*"} |~ "OOMKilled|Out of memory"',
+        '{k8s_namespace_name=~".+", k8s_pod_name!~"galaxy-sentinel.*|loki.*"} |~ "OOMKilled|Out of memory"',
         limit=5,
         since="5m",
     )
