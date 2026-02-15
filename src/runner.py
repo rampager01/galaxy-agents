@@ -77,6 +77,8 @@ async def main():
         loop.add_signal_handler(sig, handle_signal)
 
     last_digest_date = None
+    digest_attempts = 0
+    max_digest_attempts = 3
 
     while not shutdown.is_set():
         try:
@@ -87,11 +89,22 @@ async def main():
         # Check if it's time for daily digest
         now = datetime.now()
         if now.hour == config.digest_hour and last_digest_date != now.date():
-            try:
-                await run_tier1_digest(config)
-                last_digest_date = now.date()
-            except Exception:
-                log.exception("Daily digest failed")
+            if digest_attempts < max_digest_attempts:
+                try:
+                    await run_tier1_digest(config)
+                    last_digest_date = now.date()
+                    digest_attempts = 0
+                except Exception:
+                    digest_attempts += 1
+                    log.exception(
+                        "Daily digest failed (attempt %d/%d)",
+                        digest_attempts, max_digest_attempts,
+                    )
+                    if digest_attempts >= max_digest_attempts:
+                        log.error("Giving up on daily digest after %d attempts", max_digest_attempts)
+                        last_digest_date = now.date()
+        else:
+            digest_attempts = 0
 
         # Wait for next check interval or shutdown
         try:

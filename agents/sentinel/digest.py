@@ -34,7 +34,10 @@ async def _collect_24h_summary(config) -> str:
         data = await query_metrics(
             config, 'kube_node_status_condition{condition="Ready",status="true"}'
         )
-        ready = len(data.get("result", []))
+        # Deduplicate by k8s_node_name — OTel DaemonSet produces N×N series
+        ready_nodes = {r["metric"].get("k8s_node_name", r["metric"].get("node", "?"))
+                       for r in data.get("result", [])}
+        ready = len(ready_nodes)
         lines.append(f"NODES: {ready}/{config.expected_node_count} ready")
     except Exception as e:
         lines.append(f"NODES: query failed ({e})")
@@ -118,9 +121,15 @@ async def _collect_24h_summary(config) -> str:
 
     # Error logs in last 24h by namespace
     try:
+        # Match structured log levels, not the word "error" anywhere.
+        # Covers logfmt (level=error), JSON ("level":"error"),
+        # and CNPG PostgreSQL ("error_severity":"ERROR").
         entries = await query_logs(
             config,
-            '{k8s_namespace_name=~".+"} |~ "error|Error|ERROR"',
+            '{k8s_namespace_name=~".+", k8s_pod_name!~"galaxy-sentinel.*"}'
+            ' |~ "level=(error|fatal|panic)'
+            '|level.:.?(error|fatal)'
+            '|error_severity.:.?(ERROR|FATAL|PANIC)"',
             limit=100,
             since="24h",
         )

@@ -29,10 +29,12 @@ async def check_node_ready(config) -> list[Alert]:
         'kube_node_status_condition{condition="Ready",status="true"}',
     )
     results = data.get("result", [])
-    ready_count = len(results)
+    # Deduplicate by k8s_node_name — OTel DaemonSet scrapes KSM from every
+    # node, producing N×N series (one per collector × node combination).
+    ready_nodes = {r["metric"].get("k8s_node_name", r["metric"].get("node", "?")) for r in results}
+    ready_count = len(ready_nodes)
 
     if ready_count < config.expected_node_count:
-        ready_nodes = {r["metric"].get("node", "?") for r in results}
         missing = set(config.cluster_nodes) - ready_nodes
         alerts.append(Alert(
             check_name="Node Down",
