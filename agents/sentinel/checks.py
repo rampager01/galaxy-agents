@@ -50,7 +50,7 @@ async def check_cpu_load(config) -> list[Alert]:
     alerts = []
     data = await query_metrics(
         config,
-        '{__name__=~"system_cpu_load_average_15m|system\\\\.cpu\\\\.load_average\\\\.15m"}',
+        '{__name__="system.cpu.load_average.15m"}',
     )
     for r in data.get("result", []):
         node = r["metric"].get("k8s_node_name", r["metric"].get("node", "unknown"))
@@ -84,7 +84,7 @@ async def check_memory(config) -> list[Alert]:
     # OTel hostmetrics: system.memory.usage with state label
     data = await query_metrics(
         config,
-        '{__name__=~"system_memory_usage|system\\\\.memory\\\\.usage"}',
+        '{__name__="system.memory.usage"}',
     )
     # Group by node
     node_mem: dict[str, dict[str, float]] = {}
@@ -125,7 +125,7 @@ async def check_disk(config) -> list[Alert]:
     alerts = []
     data = await query_metrics(
         config,
-        '{__name__=~"system_filesystem_usage|system\\\\.filesystem\\\\.usage"}',
+        '{__name__="system.filesystem.usage"}',
     )
     node_disk: dict[str, dict[str, float]] = {}
     for r in data.get("result", []):
@@ -175,6 +175,9 @@ async def check_crashlooping(config) -> list[Alert]:
         config,
         "increase(kube_pod_container_status_restarts_total[1h]) > 5",
     )
+    # Deduplicate by (namespace, pod) — OTel DaemonSet scrapes KSM from
+    # every node, producing one series per collector × pod combination.
+    seen: dict[tuple[str, str], float] = {}
     for r in data.get("result", []):
         pod = r["metric"].get("pod", "unknown")
         ns = r["metric"].get("namespace", "unknown")
@@ -182,6 +185,10 @@ async def check_crashlooping(config) -> list[Alert]:
             restarts = float(r["value"][1])
         except (IndexError, ValueError):
             continue
+        key = (ns, pod)
+        seen[key] = max(seen.get(key, 0), restarts)
+
+    for (ns, pod), restarts in seen.items():
         alerts.append(Alert(
             check_name="Pod CrashLooping",
             severity="warning",

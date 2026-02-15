@@ -46,7 +46,7 @@ async def _collect_24h_summary(config) -> str:
     try:
         data = await query_metrics(
             config,
-            '{__name__=~"system_cpu_load_average_15m|system\\\\.cpu\\\\.load_average\\\\.15m"}',
+            '{__name__="system.cpu.load_average.15m"}',
         )
         cpu_parts = []
         for r in data.get("result", []):
@@ -61,7 +61,7 @@ async def _collect_24h_summary(config) -> str:
     try:
         data = await query_metrics(
             config,
-            '{__name__=~"system_memory_usage|system\\\\.memory\\\\.usage"}',
+            '{__name__="system.memory.usage"}',
         )
         node_mem: dict[str, dict[str, float]] = {}
         for r in data.get("result", []):
@@ -85,7 +85,7 @@ async def _collect_24h_summary(config) -> str:
     try:
         data = await query_metrics(
             config,
-            '{__name__=~"system_filesystem_usage|system\\\\.filesystem\\\\.usage",mountpoint="/"}',
+            '{__name__="system.filesystem.usage",mountpoint="/"}',
         )
         node_disk: dict[str, dict[str, float]] = {}
         for r in data.get("result", []):
